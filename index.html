@@ -1,0 +1,527 @@
+<title>BugTrack</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: fixed left rail + working area. Rail collapses to a top strip on phones.
+   Color: blue-green neutrals, one teal accent; status and severity colors are semantic and separate. */
+:root {
+  --bg: #f3f6f6; --surface: #ffffff; --surface-2: #eaf0f0; --line: #d5dfdf;
+  --fg: #14282b; --muted: #587074; --accent: #0b6e6e; --accent-fg: #ffffff; --accent-soft: #d6ecec;
+  --open: #c0392b; --prog: #b86e00; --done: #1b7f4b; --closed: #6b7b7e;
+  --s-low: #6b7b7e; --s-med: #2f6fd0; --s-high: #c9620f; --s-crit: #c0392b;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1819; --surface: #152325; --surface-2: #1c2f31; --line: #2a3f42;
+    --fg: #e3eeee; --muted: #8fa9ac; --accent: #4fc3c3; --accent-fg: #062123; --accent-soft: #1b3d3f;
+    --open: #ef7b6e; --prog: #e5a43a; --done: #5cc58d; --closed: #8fa2a5;
+    --s-low: #8fa2a5; --s-med: #6aa1f2; --s-high: #f0924a; --s-crit: #ef7b6e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1819; --surface: #152325; --surface-2: #1c2f31; --line: #2a3f42;
+  --fg: #e3eeee; --muted: #8fa9ac; --accent: #4fc3c3; --accent-fg: #062123; --accent-soft: #1b3d3f;
+  --open: #ef7b6e; --prog: #e5a43a; --done: #5cc58d; --closed: #8fa2a5;
+  --s-low: #8fa2a5; --s-med: #6aa1f2; --s-high: #f0924a; --s-crit: #ef7b6e; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.5;
+  padding-block: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, h4 { margin: 0; font-weight: 600; text-wrap: balance; }
+h1 { font-size: 22px; } h2 { font-size: 16px; } h3 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+a { color: var(--accent); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+.shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; max-width: 1180px; margin: 0 auto; padding-block: 20px; }
+.side { display: flex; flex-direction: column; gap: 18px; align-self: start; position: sticky; top: calc(20px + env(safe-area-inset-top, 0px)); }
+.brand { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.brand i { width: 14px; height: 14px; border-radius: 3px; background: var(--accent); display: inline-block; }
+nav { display: flex; flex-direction: column; gap: 2px; }
+nav button { all: unset; box-sizing: border-box; cursor: pointer; padding: 8px 10px; border-radius: 6px; color: var(--muted); font-weight: 500; }
+nav button:hover { background: var(--surface-2); color: var(--fg); }
+nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.who { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+.who label { font-size: 12px; color: var(--muted); }
+
+button, select, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type=text], input[type=search], textarea {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+textarea { resize: vertical; }
+.btn { cursor: pointer; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 7px 12px; font-weight: 500; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--open); }
+.btn.sm { padding: 4px 9px; font-size: 13px; }
+
+.note { background: var(--accent-soft); color: var(--fg); border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-bottom: 18px; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.grid { display: grid; gap: 16px; }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g-detail { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+
+.kpi { display: flex; flex-direction: column; gap: 2px; }
+.kpi b { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi span { color: var(--muted); font-size: 12px; }
+
+.bars { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.bar-row { display: grid; grid-template-columns: 72px minmax(0, 1fr) 28px; align-items: center; gap: 10px; }
+.bar-track { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 5px; }
+.stackbar { display: flex; height: 14px; border-radius: 5px; overflow: hidden; margin-top: 12px; background: var(--surface-2); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st-Open { color: var(--open); } .st-In-Progress { color: var(--prog); } .st-Resolved { color: var(--done); } .st-Closed { color: var(--closed); }
+.sv-Low { color: var(--s-low); } .sv-Medium { color: var(--s-med); } .sv-High { color: var(--s-high); } .sv-Critical { color: var(--s-crit); }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 640px; }
+th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.row { cursor: pointer; box-shadow: inset 3px 0 0 var(--sevc, transparent); }
+tr.row:hover { background: var(--surface-2); }
+.title-cell { font-weight: 500; min-width: 200px; }
+
+.filters { display: grid; grid-template-columns: 2fr repeat(4, minmax(0, 1fr)) auto; gap: 10px; align-items: center; margin-bottom: 16px; }
+.check { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.check input { width: auto; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label { font-size: 12px; color: var(--muted); }
+.formgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.formgrid .full { grid-column: 1 / -1; }
+
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 13px; margin: 8px 0 16px; }
+.cmt { padding: 10px 0; border-top: 1px solid var(--line); }
+.cmt:first-of-type { border-top: 0; }
+.cmt small { color: var(--muted); }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.log { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.log small { color: var(--muted); display: block; }
+.hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.empty { color: var(--muted); padding: 22px 6px; text-align: center; }
+.inline { display: flex; gap: 8px; }
+
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 6px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100% - 32px); }
+#toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .side { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  nav { flex-direction: row; flex-wrap: wrap; }
+  .who { flex-direction: row; align-items: center; border-top: 0; padding-top: 0; }
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-detail, .g2 { grid-template-columns: minmax(0, 1fr); }
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filters .wide { grid-column: 1 / -1; }
+  .formgrid { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><i></i>BugTrack</div>
+    <nav id="nav" aria-label="Main"></nav>
+    <div class="who">
+      <label for="role">Viewing as</label>
+      <select id="role" aria-label="Viewing as"></select>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+  var SEV = ['Low', 'Medium', 'High', 'Critical'];
+  var STATUS = ['Open', 'In Progress', 'Resolved', 'Closed'];
+  var TR = { 'Open': ['In Progress'], 'In Progress': ['Open', 'Resolved'], 'Resolved': ['Closed', 'Open'], 'Closed': ['Open'] };
+  var SEVC = { Low: 'var(--s-low)', Medium: 'var(--s-med)', High: 'var(--s-high)', Critical: 'var(--s-crit)' };
+  var STC = { 'Open': 'var(--open)', 'In Progress': 'var(--prog)', 'Resolved': 'var(--done)', 'Closed': 'var(--closed)' };
+
+  var S, meId = 1, V = { name: 'dashboard', id: null }, F = { q: '', status: '', severity: '', project: '', assignee: '', mine: false }, confirmDel = null;
+  var main = document.getElementById('main'), nav = document.getElementById('nav'), roleSel = document.getElementById('role');
+
+  function min(m) { return Date.now() - m * 60000; }
+  function seed() {
+    return {
+      next: 109,
+      users: [
+        { id: 1, name: 'Admin', role: 'admin', email: 'admin@bugtrack.com' },
+        { id: 2, name: 'Dev Dina', role: 'developer', email: 'dina@bugtrack.com' },
+        { id: 3, name: 'Dev Karthik', role: 'developer', email: 'karthik@bugtrack.com' },
+        { id: 4, name: 'Reporter Ravi', role: 'reporter', email: 'ravi@bugtrack.com' }
+      ],
+      projects: [
+        { id: 1, name: 'Sample Website', description: 'Public marketing site and checkout' },
+        { id: 2, name: 'Mobile App', description: 'Android and iOS client' },
+        { id: 3, name: 'Library System', description: 'Issue, return and fine calculation' }
+      ],
+      bugs: [
+        { id: 101, project: 1, title: 'Login button unresponsive on mobile', description: 'Tapping Login does nothing on small screens.', steps: '1. Open site on a phone\n2. Enter credentials\n3. Tap Login', severity: 'High', status: 'In Progress', reporter: 4, assignee: 2, created: min(3000), updated: min(95),
+          comments: [{ user: 4, text: 'Happens on Chrome for Android 14 only.', t: min(2800) }, { user: 2, text: 'Reproduced. The click handler is covered by the cookie banner.', t: min(95) }],
+          history: [{ user: 4, text: 'reported this bug', t: min(3000) }, { user: 1, text: 'changed assignee from <b>Unassigned</b> to <b>Dev Dina</b>', t: min(2500) }, { user: 2, text: 'changed status from <b>Open</b> to <b>In Progress</b>', t: min(120) }] },
+        { id: 102, project: 1, title: 'Checkout crashes with empty cart', description: 'Server returns error 500 when the cart has no items.', steps: '1. Open /checkout without adding items', severity: 'Critical', status: 'Open', reporter: 4, assignee: 3, created: min(1500), updated: min(600),
+          comments: [], history: [{ user: 4, text: 'reported this bug', t: min(1500) }, { user: 1, text: 'changed assignee from <b>Unassigned</b> to <b>Dev Karthik</b>', t: min(600) }] },
+        { id: 103, project: 1, title: 'Typo on the About page heading', description: 'Heading reads "Abuot Us".', steps: 'Open /about', severity: 'Low', status: 'Open', reporter: 4, assignee: null, created: min(900), updated: min(900),
+          comments: [], history: [{ user: 4, text: 'reported this bug', t: min(900) }] },
+        { id: 104, project: 2, title: 'App freezes when rotating on the profile screen', description: 'UI becomes unresponsive for about 5 seconds after rotation.', steps: '1. Open Profile\n2. Rotate the device', severity: 'Medium', status: 'Resolved', reporter: 4, assignee: 2, created: min(6000), updated: min(240),
+          comments: [{ user: 2, text: 'Fixed by moving image decoding off the main thread.', t: min(240) }], history: [{ user: 4, text: 'reported this bug', t: min(6000) }, { user: 2, text: 'changed status from <b>In Progress</b> to <b>Resolved</b>', t: min(240) }] },
+        { id: 105, project: 3, title: 'Fine calculated for books returned on the due date', description: 'Returning on the due date still adds one day of fine.', steps: '1. Issue a book\n2. Return it on the due date', severity: 'High', status: 'Open', reporter: 4, assignee: null, created: min(420), updated: min(420),
+          comments: [], history: [{ user: 4, text: 'reported this bug', t: min(420) }] },
+        { id: 106, project: 3, title: 'Search ignores book titles with apostrophes', description: 'Searching for "Handmaid\'s Tale" returns nothing.', steps: 'Search for a title with an apostrophe', severity: 'Medium', status: 'In Progress', reporter: 4, assignee: 3, created: min(2200), updated: min(300),
+          comments: [], history: [{ user: 4, text: 'reported this bug', t: min(2200) }] },
+        { id: 107, project: 2, title: 'Dark mode text unreadable on settings page', description: 'Grey text on dark grey background.', steps: 'Enable dark mode, open Settings', severity: 'Low', status: 'Closed', reporter: 4, assignee: 2, created: min(9000), updated: min(1800),
+          comments: [], history: [{ user: 4, text: 'reported this bug', t: min(9000) }, { user: 4, text: 'changed status from <b>Resolved</b> to <b>Closed</b>', t: min(1800) }] },
+        { id: 108, project: 1, title: 'Password reset email arrives twice', description: 'Two identical emails are sent within a second.', steps: 'Use Forgot password with a valid email', severity: 'Medium', status: 'Open', reporter: 4, assignee: null, created: min(200), updated: min(200),
+          comments: [], history: [{ user: 4, text: 'reported this bug', t: min(200) }] }
+      ]
+    };
+  }
+  S = { users: [], projects: [], bugs: [] };
+  var mode = 'loading', DB = null, queue = Promise.resolve(), ready = { bugs: false, projects: false, users: false };
+
+  // ---- data layer: shared database when available, in-tab sample data otherwise ----
+  function plain(d) { return JSON.parse(JSON.stringify(d)); }
+  function fromSnap(snap) { return snap.docs.map(function (d) { return plain(d.data()); }).sort(function (a, b) { return a.id - b.id; }); }
+  function nextBugId() { return S.bugs.reduce(function (m, b) { return Math.max(m, b.id); }, 100) + 1; }
+  function persist(kind, obj) {
+    if (mode !== 'db') return;
+    queue = queue.then(function () { return DB.doc(kind + '/' + obj.id).set(plain(obj)); }).catch(failed);
+  }
+  function unpersist(kind, id) {
+    if (mode !== 'db') return;
+    queue = queue.then(function () { return DB.doc(kind + '/' + id).delete(); }).catch(failed);
+  }
+  function failed(e) {
+    toast(e && e.code === 'invalid_argument' ? 'You can view this data but not change it' : 'Could not save. Try again.');
+    resync();
+  }
+  function resync() {
+    if (mode !== 'db') return;
+    Promise.all(['users', 'projects', 'bugs'].map(function (c) { return DB.collection(c).get(); })).then(function (r) {
+      S.users = fromSnap(r[0]); S.projects = fromSnap(r[1]); S.bugs = fromSnap(r[2]); refresh();
+    }).catch(function () {});
+  }
+  function subscribe(coll) {
+    DB.collection(coll).onSnapshot(function (snap) {
+      S[coll] = fromSnap(snap); ready[coll] = true; refresh();
+    }, function () { toast('Live updates stopped. Reload the page.'); });
+  }
+  function init() {
+    render();
+    var cl = window.claude;
+    var local = function () { mode = 'local'; S = seed(); render(); };
+    if (!cl || !cl.use) { local(); return; }
+    cl.use('db').then(function (db) {
+      if (!db) { local(); return; }
+      DB = db; mode = 'db';
+      subscribe('users'); subscribe('projects'); subscribe('bugs');
+    }).catch(local);
+  }
+  function loadSample() {
+    var d = seed();
+    if (mode !== 'db') { S = d; render(); return; }
+    S.bugs.forEach(function (b) { unpersist('bugs', b.id); });
+    S.projects.forEach(function (p) { unpersist('projects', p.id); });
+    S.users.forEach(function (u) { unpersist('users', u.id); });
+    d.users.forEach(function (u) { persist('users', u); });
+    d.projects.forEach(function (p) { persist('projects', p); });
+    d.bugs.forEach(function (b) { persist('bugs', b); });
+    toast('Sample data loaded');
+  }
+  function refresh() {
+    if (V.name === 'new') { renderNav(); return; }
+    if (V.name === 'bugs' && document.getElementById('list') && ready.bugs) { document.getElementById('list').innerHTML = table(filtered()); renderNav(); return; }
+    var a = document.activeElement;
+    if (a && main.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.value) return;
+    render();
+  }
+
+  // ---- helpers ----
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function me() { return S.users.filter(function (u) { return u.id === meId; })[0]; }
+  function user(id) { return S.users.filter(function (u) { return u.id === id; })[0] || { id: id, name: 'Unknown', role: 'reporter' }; }
+  function proj(id) { return S.projects.filter(function (p) { return p.id === id; })[0] || { id: id, name: 'Unknown project', description: '' }; }
+  function bug(id) { return S.bugs.filter(function (b) { return b.id === id; })[0]; }
+  function bid(id) { return 'BT-' + id; }
+  function ago(t) {
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return 'just now'; if (m < 60) return m + ' min ago';
+    var h = Math.round(m / 60); if (h < 24) return h + ' h ago';
+    return Math.round(h / 24) + ' d ago';
+  }
+  function opt(v, l, sel) { return '<option value="' + esc(v) + '"' + (String(sel) === String(v) ? ' selected' : '') + '>' + esc(l) + '</option>'; }
+  function stPill(s) { return '<span class="pill st-' + s.replace(/ /g, '-') + '">' + esc(s) + '</span>'; }
+  function svPill(s) { return '<span class="pill sv-' + s + '">' + esc(s) + '</span>'; }
+  var toastTimer;
+  function toast(m) {
+    var t = document.getElementById('toast'); t.textContent = m; t.className = 'on';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.className = ''; }, 2400);
+  }
+  function log(b, text) { b.history.unshift({ user: meId, text: text, t: Date.now() }); b.updated = Date.now(); }
+  function go(name, id) { V = { name: name, id: id || null }; confirmDel = null; render(); window.scrollTo(0, 0); }
+
+  // ---- rules (same as the server) ----
+  function canStatus(b, to) {
+    var u = me();
+    if (TR[b.status].indexOf(to) < 0) return false;
+    if (u.role === 'admin') return true;
+    var isA = b.assignee === u.id, isR = b.reporter === u.id;
+    var wf = to === 'In Progress' || to === 'Resolved' || (b.status === 'In Progress' && to === 'Open');
+    return wf ? isA : (isR || isA);
+  }
+  function setAssignee(b, id) {
+    var from = b.assignee ? user(b.assignee).name : 'Unassigned', to = id ? user(id).name : 'Unassigned';
+    b.assignee = id; log(b, 'changed assignee from <b>' + esc(from) + '</b> to <b>' + esc(to) + '</b>'); persist('bugs', b);
+  }
+
+  // ---- views ----
+  function renderNav() {
+    var items = [['dashboard', 'Dashboard'], ['bugs', 'Bugs'], ['projects', 'Projects']];
+    if (me().role === 'admin') items.push(['users', 'Users']);
+    var cur = V.name === 'bug' || V.name === 'new' ? 'bugs' : V.name;
+    nav.innerHTML = items.map(function (i) {
+      return '<button data-act="nav" data-v="' + i[0] + '"' + (cur === i[0] ? ' aria-current="page"' : '') + '>' + i[1] + '</button>';
+    }).join('');
+    roleSel.innerHTML = S.users.map(function (u) { return opt(u.id, u.name + ' (' + u.role + ')', meId); }).join('');
+  }
+
+  function note() {
+    var where = mode === 'db' ? 'Changes are saved to this page\'s database and shared with everyone who opens it.' : 'Changes stay in this browser tab only.';
+    return '<div class="note">Interactive preview with sample data. ' + where + ' Use <b>Viewing as</b> to try each role. ' +
+      '<button class="btn sm" data-act="sample">' + (confirmDel === 'reset' ? 'Confirm reset' : 'Reset sample data') + '</button></div>';
+  }
+
+  function viewDashboard() {
+    var total = S.bugs.length, by = {}, sv = {};
+    STATUS.forEach(function (s) { by[s] = 0; }); SEV.forEach(function (s) { sv[s] = 0; });
+    S.bugs.forEach(function (b) { by[b.status]++; sv[b.severity]++; });
+    var active = function (b) { return b.status === 'Open' || b.status === 'In Progress'; };
+    var mine = S.bugs.filter(function (b) { return b.assignee === meId && active(b); }).length;
+    var unas = S.bugs.filter(function (b) { return !b.assignee && active(b); }).length;
+    var maxSv = Math.max.apply(null, SEV.map(function (s) { return sv[s]; }).concat([1]));
+    var recent = S.bugs.slice().sort(function (a, b) { return b.updated - a.updated; }).slice(0, 5);
+    function kpi(n, l, c) { return '<div class="panel kpi"><b' + (c ? ' style="color:' + c + '"' : '') + '>' + n + '</b><span>' + l + '</span></div>'; }
+    return note() + '<div class="head"><h1>Dashboard</h1><button class="btn primary" data-act="new">Report a bug</button></div>' +
+      '<div class="stack">' +
+      '<div class="grid g4">' + kpi(total, 'Total bugs') + kpi(by['Open'], 'Open', 'var(--open)') + kpi(by['In Progress'], 'In progress', 'var(--prog)') + kpi(by['Resolved'] + by['Closed'], 'Resolved or closed', 'var(--done)') + '</div>' +
+      '<div class="grid g4">' + kpi(mine, 'Assigned to me, active') + kpi(unas, 'Unassigned, active') + '</div>' +
+      '<div class="grid g2">' +
+        '<div class="panel"><h3>By severity</h3><div class="bars">' + SEV.slice().reverse().map(function (s) {
+          return '<div class="bar-row"><span>' + s + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (sv[s] / maxSv * 100) + '%;background:' + SEVC[s] + '"></div></div><span class="mono">' + sv[s] + '</span></div>';
+        }).join('') + '</div></div>' +
+        '<div class="panel"><h3>By status</h3><div class="stackbar" role="img" aria-label="Bugs by status">' + STATUS.map(function (s) {
+          return by[s] ? '<div style="flex:' + by[s] + ';background:' + STC[s] + '"></div>' : '';
+        }).join('') + '</div><div class="legend">' + STATUS.map(function (s) {
+          return '<span><i class="dot" style="background:' + STC[s] + '"></i>' + s + ' <span class="mono">' + by[s] + '</span></span>';
+        }).join('') + '</div></div>' +
+      '</div>' +
+      '<div class="panel"><h2 style="margin-bottom:8px">Recently updated</h2>' + table(recent) + '</div></div>';
+  }
+
+  function table(list) {
+    if (!list.length) return '<div class="empty">No bugs match these filters.</div>';
+    return '<div class="tablewrap"><table><thead><tr><th>ID</th><th>Title</th><th>Project</th><th>Severity</th><th>Status</th><th>Assignee</th><th>Updated</th></tr></thead><tbody>' +
+      list.map(function (b) {
+        return '<tr class="row" tabindex="0" data-act="open" data-id="' + b.id + '" style="--sevc:' + SEVC[b.severity] + '">' +
+          '<td class="mono muted">' + bid(b.id) + '</td><td class="title-cell">' + esc(b.title) + '</td><td>' + esc(proj(b.project).name) + '</td>' +
+          '<td>' + svPill(b.severity) + '</td><td>' + stPill(b.status) + '</td>' +
+          '<td>' + (b.assignee ? esc(user(b.assignee).name) : '<span class="muted">Unassigned</span>') + '</td><td class="muted">' + ago(b.updated) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  function filtered() {
+    var rank = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+    return S.bugs.filter(function (b) {
+      if (F.status && b.status !== F.status) return false;
+      if (F.severity && b.severity !== F.severity) return false;
+      if (F.project && String(b.project) !== F.project) return false;
+      if (F.assignee === 'none' && b.assignee) return false;
+      if (F.assignee && F.assignee !== 'none' && String(b.assignee) !== F.assignee) return false;
+      if (F.mine && b.reporter !== meId && b.assignee !== meId) return false;
+      if (F.q) { var q = F.q.toLowerCase(); if ((b.title + ' ' + b.description).toLowerCase().indexOf(q) < 0) return false; }
+      return true;
+    }).sort(function (a, b) { return rank[a.severity] - rank[b.severity] || b.updated - a.updated; });
+  }
+
+  function viewBugs() {
+    var staff = S.users.filter(function (u) { return u.role !== 'reporter'; });
+    return note() + '<div class="head"><h1>Bugs</h1><button class="btn primary" data-act="new">Report a bug</button></div>' +
+      '<div class="panel" style="margin-bottom:16px"><div class="filters" id="filters">' +
+      '<input class="wide" type="search" id="f-q" placeholder="Search title or description" aria-label="Search" value="' + esc(F.q) + '">' +
+      '<select id="f-status" aria-label="Status"><option value="">All statuses</option>' + STATUS.map(function (s) { return opt(s, s, F.status); }).join('') + '</select>' +
+      '<select id="f-severity" aria-label="Severity"><option value="">All severities</option>' + SEV.map(function (s) { return opt(s, s, F.severity); }).join('') + '</select>' +
+      '<select id="f-project" aria-label="Project"><option value="">All projects</option>' + S.projects.map(function (p) { return opt(p.id, p.name, F.project); }).join('') + '</select>' +
+      '<select id="f-assignee" aria-label="Assignee"><option value="">Any assignee</option>' + opt('none', 'Unassigned', F.assignee) + staff.map(function (u) { return opt(u.id, u.name, F.assignee); }).join('') + '</select>' +
+      '<label class="check"><input type="checkbox" id="f-mine"' + (F.mine ? ' checked' : '') + '> Mine</label></div></div>' +
+      '<div class="panel" id="list">' + table(filtered()) + '</div>';
+  }
+
+  function viewNew() {
+    return '<div class="head"><h1>Report a bug</h1></div><form class="panel" data-form="new" id="newform"><div class="formgrid">' +
+      '<div class="field"><label for="n-project">Project</label><select id="n-project">' + S.projects.map(function (p) { return opt(p.id, p.name, ''); }).join('') + '</select></div>' +
+      '<div class="field"><label for="n-sev">Severity</label><select id="n-sev">' + SEV.map(function (s) { return opt(s, s, 'Medium'); }).join('') + '</select></div>' +
+      '<div class="field full"><label for="n-title">Title</label><input type="text" id="n-title" maxlength="120" required></div>' +
+      '<div class="field full"><label for="n-desc">Description</label><textarea id="n-desc" rows="3" maxlength="3000"></textarea></div>' +
+      '<div class="field full"><label for="n-steps">Steps to reproduce</label><textarea id="n-steps" rows="4" maxlength="3000" placeholder="1. ...&#10;2. ...&#10;3. ..."></textarea></div>' +
+      '</div><div class="inline" style="margin-top:16px"><button class="btn primary" type="submit">Submit bug</button><button class="btn" type="button" data-act="nav" data-v="bugs">Cancel</button></div></form>';
+  }
+
+  function viewBug() {
+    var b = bug(V.id); if (!b) return '<div class="empty">Bug not found.</div>';
+    var u = me(), isAdmin = u.role === 'admin', isDev = u.role === 'developer';
+    var staff = S.users.filter(function (x) { return x.role !== 'reporter'; });
+    var moves = TR[b.status].filter(function (s) { return canStatus(b, s); });
+    return '<div class="head"><button class="btn sm" data-act="nav" data-v="bugs">&larr; All bugs</button></div>' +
+      '<div class="grid g-detail"><div class="stack">' +
+        '<div class="panel"><div class="muted mono">' + bid(b.id) + '</div><h1 style="margin-top:2px">' + esc(b.title) + '</h1>' +
+        '<div class="meta"><span>' + svPill(b.severity) + '</span><span>' + stPill(b.status) + '</span><span>' + esc(proj(b.project).name) + '</span><span>Reported by ' + esc(user(b.reporter).name) + ' ' + ago(b.created) + '</span></div>' +
+        '<h3>Description</h3><p class="pre">' + (esc(b.description) || '<span class="muted">None</span>') + '</p>' +
+        '<h3>Steps to reproduce</h3><p class="pre" style="margin-bottom:0">' + (esc(b.steps) || '<span class="muted">None</span>') + '</p></div>' +
+        '<div class="panel"><h2>Comments (' + b.comments.length + ')</h2><div style="margin-top:8px">' +
+          (b.comments.map(function (c) { return '<div class="cmt"><b>' + esc(user(c.user).name) + '</b> <small>' + esc(user(c.user).role) + ' &middot; ' + ago(c.t) + '</small><div class="pre" style="margin:2px 0 0">' + esc(c.text) + '</div></div>'; }).join('') || '<p class="muted">No comments yet.</p>') +
+        '</div><form data-form="comment" style="margin-top:10px"><label class="muted" for="c-text" style="font-size:12px">Add a comment</label>' +
+        '<textarea id="c-text" rows="2" maxlength="2000" required></textarea><div style="margin-top:8px"><button class="btn primary sm" type="submit">Post comment</button></div></form></div>' +
+      '</div><div class="stack">' +
+        '<div class="panel"><h2>Status</h2><div class="acts">' +
+          (moves.map(function (s) { return '<button class="btn" data-act="status" data-to="' + s + '">Move to ' + s + '</button>'; }).join('') || '<span class="muted">No status changes available to you right now.</span>') +
+        '</div><p class="hint">Allowed next steps: ' + TR[b.status].join(', ') + '. Who may make each move depends on your role.</p>' +
+        '<h2 style="margin-top:16px">Assignee</h2><p style="margin:6px 0 10px">' + (b.assignee ? esc(user(b.assignee).name) : '<span class="muted">Unassigned</span>') + '</p>' +
+        (isAdmin ? '<div class="inline"><select id="assignee" aria-label="Assignee"><option value="">Unassigned</option>' + staff.map(function (x) { return opt(x.id, x.name + ' (' + x.role + ')', b.assignee); }).join('') + '</select><button class="btn" data-act="assign">Save</button></div>' : '') +
+        (isDev ? (b.assignee === u.id ? '<button class="btn sm" data-act="unassignme">Unassign me</button>' : '<button class="btn sm" data-act="assignme">Assign to me</button>') : '') +
+        (!isAdmin && !isDev ? '<p class="hint">Reporters cannot assign bugs.</p>' : '') +
+        (isAdmin ? '<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">' + (confirmDel === 'bug' ? '<button class="btn danger sm" data-act="delbug">Confirm delete</button> <button class="btn sm" data-act="cancel">Cancel</button>' : '<button class="btn danger sm" data-act="askdelbug">Delete bug</button>') + '</div>' : '') +
+        '</div>' +
+        '<div class="panel"><h2>Activity</h2><ul class="log">' + b.history.map(function (h) { return '<li><b>' + esc(user(h.user).name) + '</b> ' + h.text + '<small>' + ago(h.t) + '</small></li>'; }).join('') + '</ul></div>' +
+      '</div></div>';
+  }
+
+  function viewProjects() {
+    var isAdmin = me().role === 'admin';
+    return note() + '<div class="head"><h1>Projects</h1></div><div class="stack">' +
+      (isAdmin ? '<form class="panel" data-form="project"><div class="formgrid"><div class="field"><label for="p-name">Project name</label><input type="text" id="p-name" maxlength="80" required></div>' +
+        '<div class="field"><label for="p-desc">Description</label><input type="text" id="p-desc" maxlength="500"></div></div><div style="margin-top:12px"><button class="btn primary" type="submit">Add project</button></div></form>' : '') +
+      '<div class="panel"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Description</th><th>Bugs</th><th>Active</th><th></th></tr></thead><tbody>' +
+      S.projects.map(function (p) {
+        var all = S.bugs.filter(function (b) { return b.project === p.id; }), act = all.filter(function (b) { return b.status === 'Open' || b.status === 'In Progress'; });
+        var del = isAdmin ? (confirmDel === 'p' + p.id ? '<button class="btn danger sm" data-act="delproj" data-id="' + p.id + '">Confirm delete</button> <button class="btn sm" data-act="cancel">Cancel</button>' : '<button class="btn danger sm" data-act="askdelproj" data-id="' + p.id + '">Delete</button>') : '';
+        return '<tr><td><a href="#" data-act="projbugs" data-id="' + p.id + '">' + esc(p.name) + '</a></td><td>' + esc(p.description) + '</td><td class="mono">' + all.length + '</td><td class="mono">' + act.length + '</td><td style="text-align:right">' + del + '</td></tr>';
+      }).join('') + '</tbody></table></div></div></div>';
+  }
+
+  function viewUsers() {
+    if (me().role !== 'admin') return '<div class="empty">Only admins can manage users.</div>';
+    return note() + '<div class="head"><h1>Users</h1></div><div class="panel"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead><tbody>' +
+      S.users.map(function (u) {
+        return '<tr><td>' + esc(u.name) + '</td><td class="mono">' + esc(u.email) + '</td><td>' + (u.id === meId ? esc(u.role) :
+          '<select data-role="' + u.id + '" aria-label="Role for ' + esc(u.name) + '" style="width:auto">' + ['admin', 'developer', 'reporter'].map(function (r) { return opt(r, r, u.role); }).join('') + '</select>') + '</td></tr>';
+      }).join('') + '</tbody></table></div><p class="hint">Changing a role here changes what that user can do. Switch "Viewing as" to see the difference.</p></div>';
+  }
+
+  function render() {
+    var loading = mode === 'loading' || (mode === 'db' && !(ready.users && ready.projects && ready.bugs));
+    if (loading) { nav.innerHTML = ''; roleSel.innerHTML = ''; main.innerHTML = '<div class="empty">Loading bugs...</div>'; return; }
+    if (!S.users.length) {
+      nav.innerHTML = ''; roleSel.innerHTML = '';
+      main.innerHTML = '<div class="panel empty"><h2>No data yet</h2><p>This tracker is empty. Load the sample project to explore it.</p><button class="btn primary" data-act="sample">Load sample data</button></div>';
+      return;
+    }
+    if (!me()) meId = S.users[0].id;
+    renderNav();
+    var v = V.name;
+    main.innerHTML = v === 'dashboard' ? viewDashboard() : v === 'bugs' ? viewBugs() : v === 'new' ? viewNew() :
+      v === 'bug' ? viewBug() : v === 'projects' ? viewProjects() : viewUsers();
+  }
+
+  // ---- events ----
+  var actions = {
+    nav: function (t) { go(t.dataset.v); },
+    new: function () { go('new'); },
+    sample: function () {
+      if (!S.users.length || confirmDel === 'reset') { confirmDel = null; loadSample(); if (mode !== 'db') render(); }
+      else { confirmDel = 'reset'; render(); }
+    },
+    open: function (t) { go('bug', Number(t.dataset.id)); },
+    cancel: function () { confirmDel = null; render(); },
+    status: function (t) {
+      var b = bug(V.id), to = t.dataset.to;
+      if (!canStatus(b, to)) { toast('You are not allowed to make this change'); return; }
+      var from = b.status; b.status = to; log(b, 'changed status from <b>' + esc(from) + '</b> to <b>' + esc(to) + '</b>'); persist('bugs', b); toast('Status updated'); render();
+    },
+    assign: function () { var v = document.getElementById('assignee').value; setAssignee(bug(V.id), v ? Number(v) : null); toast('Assignee saved'); render(); },
+    assignme: function () { setAssignee(bug(V.id), meId); toast('Assigned to you'); render(); },
+    unassignme: function () { setAssignee(bug(V.id), null); toast('Unassigned'); render(); },
+    askdelbug: function () { confirmDel = 'bug'; render(); },
+    delbug: function () { unpersist('bugs', V.id); S.bugs =S.bugs.filter(function (b) { return b.id !== V.id; }); toast('Bug deleted'); go('bugs'); },
+    askdelproj: function (t) { confirmDel = 'p' + t.dataset.id; render(); },
+    delproj: function (t) { var id = Number(t.dataset.id); S.bugs.forEach(function (b) { if (b.project === id) unpersist('bugs', b.id); }); unpersist('projects', id); S.projects = S.projects.filter(function (p) { return p.id !== id; }); S.bugs = S.bugs.filter(function (b) { return b.project !== id; }); confirmDel = null; toast('Project deleted'); render(); },
+    projbugs: function (t) { F = { q: '', status: '', severity: '', project: t.dataset.id, assignee: '', mine: false }; go('bugs'); }
+  };
+  var forms = {
+    new: function () {
+      var title = document.getElementById('n-title').value.trim(); if (!title) return;
+      var b = { id: nextBugId(), project: Number(document.getElementById('n-project').value), title: title, description: document.getElementById('n-desc').value.trim(), steps: document.getElementById('n-steps').value.trim(),
+        severity: document.getElementById('n-sev').value, status: 'Open', reporter: meId, assignee: null, created: Date.now(), updated: Date.now(), comments: [], history: [{ user: meId, text: 'reported this bug', t: Date.now() }] };
+      S.bugs.push(b); persist('bugs', b); toast('Bug reported'); go('bug', b.id);
+    },
+    comment: function () {
+      var el = document.getElementById('c-text'), text = el.value.trim(); if (!text) return;
+      var b = bug(V.id); b.comments.push({ user: meId, text: text, t: Date.now() }); b.updated = Date.now(); persist('bugs', b); toast('Comment added'); render();
+    },
+    project: function () {
+      var name = document.getElementById('p-name').value.trim(); if (!name) return;
+      if (S.projects.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); })) { toast('A project with that name already exists'); return; }
+      var p = { id: Date.now(), name: name, description: document.getElementById('p-desc').value.trim() };
+      S.projects.push(p); persist('projects', p); toast('Project added'); render();
+    }
+  };
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    if (t.tagName === 'A') e.preventDefault();
+    if (actions[t.dataset.act]) actions[t.dataset.act](t);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.matches('tr[data-act]')) actions[e.target.dataset.act](e.target);
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target.closest('form[data-form]'); if (!f) return;
+    e.preventDefault(); forms[f.dataset.form](f);
+  });
+  document.addEventListener('input', function (e) {
+    if (!e.target.closest('#filters')) return;
+    F.q = document.getElementById('f-q').value; F.status = document.getElementById('f-status').value; F.severity = document.getElementById('f-severity').value;
+    F.project = document.getElementById('f-project').value; F.assignee = document.getElementById('f-assignee').value; F.mine = document.getElementById('f-mine').checked;
+    document.getElementById('list').innerHTML = table(filtered());
+  });
+  document.addEventListener('change', function (e) {
+    var sel = e.target.closest('select[data-role]');
+    if (sel) { var u = user(Number(sel.dataset.role)); u.role = sel.value; persist('users', u); toast('Role updated'); }
+  });
+  roleSel.addEventListener('change', function () {
+    meId = Number(roleSel.value);
+    if (V.name === 'users' && me().role !== 'admin') V = { name: 'dashboard', id: null };
+    toast('Now viewing as ' + me().name); render();
+  });
+
+  init();
+})();
+</script>
